@@ -3,41 +3,59 @@
 namespace App\Http\Controllers;
 
 use App\Models\Cart;
+use App\Services\PromotionService;
 use Illuminate\Http\Request;
 
 class CartController extends Controller
 {
+    public function __construct(private PromotionService $promotions)
+    {
+    }
+
     public function index(Request $request)
     {
-        $request->validate([
-            'user_id' => 'required|exists:users,id',
-        ]);
+        $userId = $request->user()->id;
 
-        $items = Cart::where('user_id', $request->user_id)
+        $items = Cart::where('user_id', $userId)
             ->with('product')
             ->get();
 
-        return response()->json([
-            'items' => $items->map(fn ($item) => [
+        $products = $items->pluck('product')->filter()->values();
+        $resolved = $this->promotions->resolveForProducts($products);
+
+        $cartItems = $items->map(function ($item) use ($resolved) {
+            $promotion = $item->product ? ($resolved[$item->product_id] ?? null) : null;
+            $pricing = $item->product
+                ? $this->promotions->pricingPayload($item->product, $promotion)
+                : null;
+
+            return [
                 'id' => $item->id,
                 'product_id' => $item->product_id,
                 'quantity' => $item->quantity,
-                'product' => $item->product,
-            ]),
+                'product' => $item->product ? array_merge($item->product->toArray(), $pricing) : null,
+                'unit_price' => $pricing['discounted_price'] ?? 0,
+                'line_total' => round(($pricing['discounted_price'] ?? 0) * $item->quantity, 2),
+            ];
+        });
+
+        return response()->json([
+            'items' => $cartItems,
+            'subtotal' => round($cartItems->sum('line_total'), 2),
         ]);
     }
 
     public function store(Request $request)
     {
         $data = $request->validate([
-            'user_id' => 'required|exists:users,id',
             'product_id' => 'required|exists:products,id',
             'quantity' => 'nullable|integer|min:1',
         ]);
 
+        $userId = $request->user()->id;
         $quantity = $data['quantity'] ?? 1;
 
-        $existing = Cart::where('user_id', $data['user_id'])
+        $existing = Cart::where('user_id', $userId)
             ->where('product_id', $data['product_id'])
             ->first();
 
@@ -48,7 +66,7 @@ class CartController extends Controller
         }
 
         Cart::create([
-            'user_id' => $data['user_id'],
+            'user_id' => $userId,
             'product_id' => $data['product_id'],
             'quantity' => $quantity,
         ]);
@@ -59,11 +77,10 @@ class CartController extends Controller
     public function update(Request $request, int $productId)
     {
         $data = $request->validate([
-            'user_id' => 'required|exists:users,id',
             'quantity' => 'required|integer|min:1',
         ]);
 
-        $item = Cart::where('user_id', $data['user_id'])
+        $item = Cart::where('user_id', $request->user()->id)
             ->where('product_id', $productId)
             ->firstOrFail();
 
@@ -75,11 +92,7 @@ class CartController extends Controller
 
     public function destroy(Request $request, int $productId)
     {
-        $request->validate([
-            'user_id' => 'required|exists:users,id',
-        ]);
-
-        Cart::where('user_id', $request->user_id)
+        Cart::where('user_id', $request->user()->id)
             ->where('product_id', $productId)
             ->delete();
 
@@ -88,13 +101,8 @@ class CartController extends Controller
 
     public function clear(Request $request)
     {
-        $request->validate([
-            'user_id' => 'required|exists:users,id',
-        ]);
-
-        Cart::where('user_id', $request->user_id)->delete();
+        Cart::where('user_id', $request->user()->id)->delete();
 
         return response()->json(['message' => 'Cart cleared']);
     }
 }
-

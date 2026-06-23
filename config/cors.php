@@ -19,7 +19,12 @@ return [
 
     'allowed_methods' => ['*'],
 
-    'allowed_origins' => ['*'],
+    // Restrict to the known SPA origin(s). Override in production via the
+    // FRONTEND_URL env var (comma-separated list supported).
+    'allowed_origins' => array_filter(array_map('trim', explode(',', env(
+        'FRONTEND_URL',
+        'http://localhost:4200,http://127.0.0.1:4200'
+    )))),
 
     'allowed_origins_patterns' => [],
 

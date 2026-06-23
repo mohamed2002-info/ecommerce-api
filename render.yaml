@@ -1,0 +1,60 @@
+# Render Blueprint (Infrastructure as Code) for the Laravel API.
+# This file lives at the ROOT of the backend GitHub repo, so rootDir is ".".
+# Render reads it when you create a "Blueprint" from this repo.
+# Docs: https://render.com/docs/blueprint-spec
+#
+# The database is NOT managed here: this app uses MySQL, and Render's free
+# managed DB is PostgreSQL only. Provide an external MySQL (Railway / Clever
+# Cloud / Aiven) and set DB_* below in the Render dashboard (Environment).
+
+services:
+  - type: web
+    name: ecommerce-api
+    runtime: php
+    plan: free
+    buildCommand: ./render-build.sh
+    startCommand: ./render-start.sh
+    healthCheckPath: /api/health
+    envVars:
+      - key: APP_NAME
+        value: Ecommerce
+      - key: APP_ENV
+        value: production
+      - key: APP_DEBUG
+        value: "false"
+      - key: APP_KEY
+        sync: false            # set in dashboard: php artisan key:generate --show
+      - key: APP_URL
+        sync: false            # e.g. https://ecommerce-api.onrender.com
+      - key: LOG_CHANNEL
+        value: stderr          # logs show up in Render's log viewer
+
+      # ----- Database (external MySQL) — set values in the dashboard -----
+      - key: DB_CONNECTION
+        value: mysql
+      - key: DB_HOST
+        sync: false
+      - key: DB_PORT
+        value: "3306"
+      - key: DB_DATABASE
+        sync: false
+      - key: DB_USERNAME
+        sync: false
+      - key: DB_PASSWORD
+        sync: false
+
+      # ----- CORS: the deployed Angular origin (Firebase) -----
+      - key: FRONTEND_URL
+        sync: false            # e.g. https://your-app.web.app,https://your-app.firebaseapp.com
+
+      # ----- Gemini chatbot key (server-side only) -----
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GEMINI_MODEL
+        value: gemini-2.5-flash
+
+      # ----- Sessions/cache: keep it simple (no Redis on free tier) -----
+      - key: SESSION_DRIVER
+        value: cookie
+      - key: CACHE_DRIVER
+        value: file

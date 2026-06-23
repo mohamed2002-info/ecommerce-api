@@ -123,5 +123,6 @@ class ProductSeeder extends Seeder
             'image_url' => '/images/Product12.jpg',
             'description' => 'Console De Jeux SONY Playstation 4 Slim - Processeur: x86-64 AMD Jaguar Octo-Core...',
         ]);
+        
     }
 }
