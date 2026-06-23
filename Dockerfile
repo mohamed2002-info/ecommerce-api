@@ -28,8 +28,8 @@ RUN composer dump-autoload --optimize \
 ENV PORT=8000
 EXPOSE 8000
 
-# Startup: cache config, run migrations, then serve on $PORT.
-CMD php artisan config:cache \
-    && php artisan route:cache \
-    && php artisan migrate --force \
-    && php artisan serve --host 0.0.0.0 --port ${PORT}
+# Make the entrypoint executable (it may lose the +x bit on Windows checkouts).
+RUN chmod +x docker-entrypoint.sh
+
+# Startup: migrations + serve public/ on $PORT (binds reliably for Render).
+CMD ["./docker-entrypoint.sh"]
