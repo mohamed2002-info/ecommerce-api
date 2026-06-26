@@ -57,8 +57,3 @@ services:
         value: cookie
       - key: CACHE_DRIVER
         value: file
-
-      # ----- Mail: no SMTP server in production -> write to log instead of
-      # trying (and hanging on) a non-existent SMTP host like mailpit. -----
-      - key: MAIL_MAILER
-        value: log
