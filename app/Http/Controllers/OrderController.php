@@ -105,26 +105,29 @@ class OrderController extends Controller
             ], 500);
         }
 
-        // Send the confirmation email after commit; a mail failure must not roll
-        // back a successfully-placed order.
-        try {
-            $orderDetails = [
-                'user'      => $user,
-                'items'     => $cartItems,
-                'total'     => $total,
-                'orderDate' => now()->format('Y-m-d H:i:s'),
-            ];
-
-            Mail::send('emails.order-confirmation', $orderDetails, function ($message) use ($user) {
-                $message->to($user->email, $user->name)
-                    ->subject('Order Confirmation - Your Order Has Been Received');
-            });
-        } catch (\Throwable $e) {
-            Log::error('Failed to send order confirmation email: ' . $e->getMessage());
-        }
+        // Confirmation email — DISABLED in production: no SMTP server is
+        // configured, and trying to reach a non-existent host (mailpit) hangs
+        // the request for the full network timeout, freezing checkout. The
+        // order itself is already committed above, so this is purely cosmetic.
+        // To re-enable: configure a real SMTP host and uncomment below.
+        //
+        // try {
+        //     $orderDetails = [
+        //         'user'      => $user,
+        //         'items'     => $cartItems,
+        //         'total'     => $total,
+        //         'orderDate' => now()->format('Y-m-d H:i:s'),
+        //     ];
+        //     Mail::send('emails.order-confirmation', $orderDetails, function ($message) use ($user) {
+        //         $message->to($user->email, $user->name)
+        //             ->subject('Order Confirmation - Your Order Has Been Received');
+        //     });
+        // } catch (\Throwable $e) {
+        //     Log::error('Failed to send order confirmation email: ' . $e->getMessage());
+        // }
 
         return response()->json([
-            'message'  => 'Order confirmed successfully. A confirmation email has been sent to your inbox.',
+            'message'  => 'Order confirmed successfully.',
             'success'  => true,
             'order_id' => $order->id,
         ], 200);
