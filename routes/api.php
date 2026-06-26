@@ -30,15 +30,11 @@ use App\Http\Controllers\StoreController;
 | Public routes
 |--------------------------------------------------------------------------
 */
-// Health check for the hosting platform (Render) — confirms the app + DB are up.
+// Health check for the hosting platform (Render). MUST be instant and must NOT
+// touch the database: the DB is remote (Railway) and a slow query makes Render's
+// health check time out, which leaves the deploy stuck "in progress" forever.
 Route::get('health', function () {
-    try {
-        \Illuminate\Support\Facades\DB::connection()->getPdo();
-        $db = 'ok';
-    } catch (\Throwable $e) {
-        $db = 'down';
-    }
-    return response()->json(['status' => 'ok', 'database' => $db]);
+    return response()->json(['status' => 'ok']);
 });
 
 Route::post('register', [UserController::class, 'register']);
