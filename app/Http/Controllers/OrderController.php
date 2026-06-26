@@ -107,20 +107,31 @@ class OrderController extends Controller
 
         // Send the confirmation email after commit; a mail failure must not roll
         // back a successfully-placed order.
-        try {
-            $orderDetails = [
-                'user'      => $user,
-                'items'     => $cartItems,
-                'total'     => $total,
-                'orderDate' => now()->format('Y-m-d H:i:s'),
-            ];
+        //
+        // IMPORTANT: only attempt SMTP delivery when a real SMTP host is set.
+        // In production without a mail server, trying to reach a non-existent
+        // host (e.g. "mailpit") hangs for the full network timeout and freezes
+        // the request. With MAIL_MAILER=log (or no SMTP host) we skip sending.
+        $mailer = config('mail.default');
+        $smtpHost = config('mail.mailers.smtp.host');
+        $smtpConfigured = $mailer === 'smtp' && $smtpHost && ! in_array($smtpHost, ['mailpit', 'localhost', '127.0.0.1'], true);
 
-            Mail::send('emails.order-confirmation', $orderDetails, function ($message) use ($user) {
-                $message->to($user->email, $user->name)
-                    ->subject('Order Confirmation - Your Order Has Been Received');
-            });
-        } catch (\Throwable $e) {
-            Log::error('Failed to send order confirmation email: ' . $e->getMessage());
+        if ($smtpConfigured) {
+            try {
+                $orderDetails = [
+                    'user'      => $user,
+                    'items'     => $cartItems,
+                    'total'     => $total,
+                    'orderDate' => now()->format('Y-m-d H:i:s'),
+                ];
+
+                Mail::send('emails.order-confirmation', $orderDetails, function ($message) use ($user) {
+                    $message->to($user->email, $user->name)
+                        ->subject('Order Confirmation - Your Order Has Been Received');
+                });
+            } catch (\Throwable $e) {
+                Log::error('Failed to send order confirmation email: ' . $e->getMessage());
+            }
         }
 
         return response()->json([
