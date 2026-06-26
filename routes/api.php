@@ -30,21 +30,15 @@ use App\Http\Controllers\StoreController;
 | Public routes
 |--------------------------------------------------------------------------
 */
-// Health check for the hosting platform (Render). MUST be instant: it does NOT
-// touch the database, because the DB is remote (Railway) and a slow query would
-// make Render's 5s health check time out and needlessly restart the instance.
+// Health check for the hosting platform (Render) — confirms the app + DB are up.
 Route::get('health', function () {
-    return response()->json(['status' => 'ok']);
-});
-
-// Separate, explicit DB check (not used by the platform health check).
-Route::get('health/db', function () {
     try {
         \Illuminate\Support\Facades\DB::connection()->getPdo();
-        return response()->json(['status' => 'ok', 'database' => 'ok']);
+        $db = 'ok';
     } catch (\Throwable $e) {
-        return response()->json(['status' => 'ok', 'database' => 'down'], 503);
+        $db = 'down';
     }
+    return response()->json(['status' => 'ok', 'database' => $db]);
 });
 
 Route::post('register', [UserController::class, 'register']);
